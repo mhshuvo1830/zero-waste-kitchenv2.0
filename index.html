@@ -478,7 +478,43 @@ Eggs 12"></textarea>
   </div>
 
   <div class="toast" id="toast"></div>
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-  <script type="module" src="app.js"></script>
+  <script>
+    // Auth UI bootstrap: keeps Sign in/Create account switching responsive even
+    // while Firebase modules are still loading or if a CDN request is delayed.
+    (() => {
+      const loginForm = document.getElementById("loginForm");
+      const signupForm = document.getElementById("signupForm");
+      const authKicker = document.getElementById("authKicker");
+      const authTitle = document.getElementById("authTitle");
+      const authSubtitle = document.getElementById("authSubtitle");
+      const showSignupBtn = document.getElementById("showSignupBtn");
+      const showSigninBtn = document.getElementById("showSigninBtn");
+      const setupMessage = document.getElementById("firebaseSetupMessage");
+
+      function switchMode(mode) {
+        const signup = mode === "signup";
+        if (loginForm) loginForm.hidden = signup;
+        if (signupForm) signupForm.hidden = !signup;
+        if (authKicker) authKicker.textContent = signup ? "NEW ACCOUNT" : "WELCOME BACK";
+        if (authTitle) authTitle.textContent = signup ? "Create your PantryLoop account" : "Sign in to PantryLoop";
+        if (authSubtitle) authSubtitle.textContent = signup
+          ? "Create a private account so your pantry, shopping, waste and profile data stay connected to you."
+          : "Access your private pantry workspace and continue from where you left off.";
+      }
+
+      showSignupBtn?.addEventListener("click", () => switchMode("signup"));
+      showSigninBtn?.addEventListener("click", () => switchMode("signin"));
+
+      // If the Firebase/module script never becomes ready, show an actionable error
+      // instead of leaving buttons apparently dead.
+      window.setTimeout(() => {
+        if (!window.__pantryAuthReady && setupMessage) {
+          setupMessage.hidden = false;
+          setupMessage.innerHTML = "PantryLoop JavaScript/Firebase did not finish loading. Hard-refresh the page (Ctrl+Shift+R). If this remains, check the browser Console for a blocked <b>app.js</b> or <b>gstatic Firebase</b> request.";
+        }
+      }, 8000);
+    })();
+  </script>
+  <script type="module" src="./app.js?v=4.3"></script>
 </body>
 </html>
