@@ -510,11 +510,19 @@ Eggs 12"></textarea>
       window.setTimeout(() => {
         if (!window.__pantryAuthReady && setupMessage) {
           setupMessage.hidden = false;
-          setupMessage.innerHTML = "PantryLoop JavaScript/Firebase did not finish loading. Hard-refresh the page (Ctrl+Shift+R). If this remains, check the browser Console for a blocked <b>app.js</b> or <b>gstatic Firebase</b> request.";
+          const blocked = window.__firebaseSdkLoadError ? ` Blocked/failed file: <b>${window.__firebaseSdkLoadError}</b>.` : "";
+          const appState = window.__pantryloopScriptStarted ? "app.js started but stopped before auth initialization." : "app.js did not start.";
+          setupMessage.innerHTML = `PantryLoop did not finish loading. ${appState}${blocked} Hard-refresh (Ctrl+Shift+R).`;
         }
       }, 8000);
     })();
   </script>
-  <script type="module" src="./app.js?v=4.3"></script>
+  <!-- Firebase compat scripts: classic deferred scripts are more robust on static GitHub Pages than a remote ESM import graph. -->
+  <script defer src="https://www.gstatic.com/firebasejs/12.16.0/firebase-app-compat.js" onload="window.__firebaseAppCompatLoaded=true" onerror="window.__firebaseSdkLoadError='firebase-app-compat.js'"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/12.16.0/firebase-auth-compat.js" onload="window.__firebaseAuthCompatLoaded=true" onerror="window.__firebaseSdkLoadError='firebase-auth-compat.js'"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore-compat.js" onload="window.__firebaseFirestoreCompatLoaded=true" onerror="window.__firebaseSdkLoadError='firebase-firestore-compat.js'"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/12.16.0/firebase-storage-compat.js" onload="window.__firebaseStorageCompatLoaded=true" onerror="window.__firebaseSdkLoadError='firebase-storage-compat.js'"></script>
+  <script defer src="./firebase-config.js?v=4.4"></script>
+  <script defer src="./app.js?v=4.4"></script>
 </body>
 </html>
