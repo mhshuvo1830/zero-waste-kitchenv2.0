@@ -1,4 +1,4 @@
-// PantryLoop V4.4: classic-script Firebase compat bootstrap.
+// PantryLoop V4.5: Firebase compat Firestore snapshot fix.
 // This avoids browser ESM/module-loading failures on GitHub Pages while keeping Firebase Auth/Firestore/Storage.
 window.__pantryloopScriptStarted = true;
 const firebaseConfig = window.firebaseConfig || {};
@@ -114,7 +114,7 @@ async function loadUserState(uid){
   activeUid=uid; applyState({}); if(typeof renderAll==="function") renderAll();
   try{
     const snap=await getDoc(doc(db,"users",uid,"private","state"));
-    if(snap.exists()) applyState(snap.data()); else { applyState({inventory:[],shopping:[],waste:[],readNotifications:[]}); await writeStateToFirestore(); }
+    if(snap.exists) applyState(snap.data()); else { applyState({inventory:[],shopping:[],waste:[],readNotifications:[]}); await writeStateToFirestore(); }
     if(typeof renderAll==="function") renderAll();
   }catch(err){
     console.error("PantryLoop cloud load failed:",err);
@@ -627,7 +627,7 @@ renderAll();
 
   $("#forgotPasswordBtn").onclick=async()=>{const email=$("#loginEmail").value.trim(),error=$("#loginError");error.hidden=true;authSuccess.hidden=true;if(!firebaseConfigured || !firebaseSdkReady || !auth){error.textContent=!firebaseConfigured?"Firebase is not configured yet.":"Firebase SDK did not load. Hard-refresh the page or allow gstatic.com.";error.hidden=false;return;}if(!/^\S+@\S+\.\S+$/.test(email)){error.textContent="Enter your email first, then choose Forgot password.";error.hidden=false;return;}try{await sendPasswordResetEmail(auth,email);authSuccess.textContent="Password reset email sent. Check your inbox.";authSuccess.hidden=false;}catch(err){error.textContent=authErrorMessage(err);error.hidden=false;}};
 
-  async function loadProfile(u){let p={name:u.displayName||"Pantry User",email:u.email||"",photoURL:u.photoURL||""};try{const s=await getDoc(doc(db,"users",u.uid));if(s.exists())p={...p,...s.data()};else await setDoc(doc(db,"users",u.uid),{...p,createdAt:serverTimestamp(),updatedAt:serverTimestamp()},{merge:true});}catch(err){console.error("Profile load failed:",err);}currentUserProfile=p;return p;}
+  async function loadProfile(u){let p={name:u.displayName||"Pantry User",email:u.email||"",photoURL:u.photoURL||""};try{const s=await getDoc(doc(db,"users",u.uid));if(s.exists)p={...p,...s.data()};else await setDoc(doc(db,"users",u.uid),{...p,createdAt:serverTimestamp(),updatedAt:serverTimestamp()},{merge:true});}catch(err){console.error("Profile load failed:",err);}currentUserProfile=p;return p;}
   async function handleSignedInUser(u){await loadProfile(u);await loadUserState(u.uid);showApp();go("dashboard");}
   if(firebaseConfigured && firebaseSdkReady && auth){
     onAuthStateChanged(auth,async u=>{
