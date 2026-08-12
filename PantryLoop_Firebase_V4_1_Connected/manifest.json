@@ -1,8 +1,0 @@
-{
-  "name": "PantryLoop \u2014 Zero-Waste Kitchen",
-  "short_name": "PantryLoop",
-  "start_url": "./index.html",
-  "display": "standalone",
-  "background_color": "#f4f1e9",
-  "theme_color": "#15362d"
-}
