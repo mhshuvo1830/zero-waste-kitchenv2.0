@@ -57,6 +57,21 @@ let cloudWriteInFlight=Promise.resolve();
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
+
+let tesseractLoadPromise=null;
+function ensureTesseract(){
+  if(window.Tesseract) return Promise.resolve(window.Tesseract);
+  if(tesseractLoadPromise) return tesseractLoadPromise;
+  tesseractLoadPromise=new Promise((resolve,reject)=>{
+    const script=document.createElement("script");
+    script.src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
+    script.async=true;
+    script.onload=()=>window.Tesseract?resolve(window.Tesseract):reject(new Error("Tesseract loaded without a global API"));
+    script.onerror=()=>reject(new Error("Could not load the OCR library"));
+    document.head.appendChild(script);
+  });
+  return tesseractLoadPromise;
+}
 const stateSnapshot=()=>({inventory,shopping,waste,readNotifications,schemaVersion:1});
 
 async function writeStateToFirestore(){
@@ -406,11 +421,12 @@ $("#receiptImageInput").addEventListener("change",e=>{
 });
 $("#ocrScanBtn").addEventListener("click",async()=>{
   if(!receiptImageFile){toast("Choose or capture a receipt image first");return}
-  if(!window.Tesseract){toast("OCR library is unavailable. Use manual text or the demo scanner.");return}
   const progress=$("#ocrProgress"), bar=$("#ocrProgressBar"), label=$("#ocrProgressText");
-  progress.hidden=false; bar.style.width="2%"; label.textContent="Preparing OCR…";
+  progress.hidden=false; bar.style.width="2%"; label.textContent="Loading OCR…";
   try{
-    const result=await Tesseract.recognize(receiptImageFile,"eng",{logger:m=>{
+    const TesseractApi=await ensureTesseract();
+    label.textContent="Preparing OCR…";
+    const result=await TesseractApi.recognize(receiptImageFile,"eng",{logger:m=>{
       if(m.status){ const pct=m.progress?Math.round(m.progress*100):5; bar.style.width=`${Math.max(5,pct)}%`; label.textContent=`${m.status}${m.progress?` • ${pct}%`:""}`; }
     }});
     $("#receiptText").value=result.data.text.trim(); bar.style.width="100%"; label.textContent="OCR complete — reviewing grocery lines";
@@ -535,6 +551,7 @@ renderAll();
   function showApp(){loginScreen.hidden=true;appShell.hidden=false;document.body.classList.remove("login-active");updateUserUI();renderNotifications();}
   function setAuthMode(mode,msg=""){const su=mode==="signup";loginForm.hidden=su;signupForm.hidden=!su;$("#authKicker").textContent=su?"NEW ACCOUNT":"WELCOME BACK";$("#authTitle").textContent=su?"Create your PantryLoop account":"Sign in to PantryLoop";$("#authSubtitle").textContent=su?"Create a private account so your pantry, shopping, waste and profile data stay connected to you.":"Access your private pantry workspace and continue from where you left off.";authSuccess.hidden=!msg;authSuccess.textContent=msg;$("#loginError").hidden=true;$("#signupError").hidden=true;setTimeout(()=>$(su?"#signupName":"#loginEmail")?.focus(),0);}
   $("#showSignupBtn").onclick=()=>setAuthMode("signup");$("#showSigninBtn").onclick=()=>setAuthMode("signin");
+  window.__pantryAuthReady=true;
   function bindToggle(btn,input){$(btn).onclick=()=>{const i=$(input),show=i.type==="text";i.type=show?"password":"text";$(btn).textContent=show?"Show":"Hide";};}
   bindToggle("#togglePassword","#loginPassword");bindToggle("#toggleSignupPassword","#signupPassword");bindToggle("#toggleSignupConfirmPassword","#signupConfirmPassword");
 
