@@ -1,12 +1,40 @@
-import { firebaseConfig } from "./firebase-config.js";
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile, updateEmail, sendPasswordResetEmail, setPersistence, browserLocalPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
-import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-storage.js";
-
+// PantryLoop V4.4: classic-script Firebase compat bootstrap.
+// This avoids browser ESM/module-loading failures on GitHub Pages while keeping Firebase Auth/Firestore/Storage.
+window.__pantryloopScriptStarted = true;
+const firebaseConfig = window.firebaseConfig || {};
 const firebaseConfigured = Boolean(firebaseConfig?.apiKey && firebaseConfig?.projectId && !String(firebaseConfig.apiKey).startsWith("YOUR_") && !String(firebaseConfig.projectId).startsWith("YOUR_"));
+const firebaseCoreReady = Boolean(window.firebase && typeof window.firebase.initializeApp === "function");
+const firebaseAuthReady = Boolean(firebaseCoreReady && typeof window.firebase.auth === "function");
+const firebaseFirestoreReady = Boolean(firebaseCoreReady && typeof window.firebase.firestore === "function");
+const firebaseStorageReady = Boolean(firebaseCoreReady && typeof window.firebase.storage === "function");
+const firebaseSdkReady = firebaseCoreReady && firebaseAuthReady && firebaseFirestoreReady;
 let firebaseApp=null, auth=null, db=null, storage=null;
-if(firebaseConfigured){ firebaseApp=initializeApp(firebaseConfig); auth=getAuth(firebaseApp); db=getFirestore(firebaseApp); storage=getStorage(firebaseApp); }
+if(firebaseConfigured && firebaseCoreReady){
+  firebaseApp=window.firebase.apps?.length ? window.firebase.app() : window.firebase.initializeApp(firebaseConfig);
+  if(firebaseAuthReady) auth=firebaseApp.auth();
+  if(firebaseFirestoreReady) db=firebaseApp.firestore();
+  if(firebaseStorageReady) storage=firebaseApp.storage();
+}
+
+// Small compatibility wrappers let the existing modular-style app code keep working.
+const createUserWithEmailAndPassword=(a,email,password)=>a.createUserWithEmailAndPassword(email,password);
+const signInWithEmailAndPassword=(a,email,password)=>a.signInWithEmailAndPassword(email,password);
+const signOut=a=>a.signOut();
+const onAuthStateChanged=(a,cb)=>a.onAuthStateChanged(cb);
+const updateProfile=(u,data)=>u.updateProfile(data);
+const updateEmail=(u,email)=>u.updateEmail(email);
+const sendPasswordResetEmail=(a,email)=>a.sendPasswordResetEmail(email);
+const setPersistence=(a,p)=>a.setPersistence(p);
+const browserLocalPersistence=window.firebase?.auth?.Auth?.Persistence?.LOCAL || "local";
+const browserSessionPersistence=window.firebase?.auth?.Auth?.Persistence?.SESSION || "session";
+const doc=(database,...parts)=>database.doc(parts.join("/"));
+const getDoc=ref=>ref.get();
+const setDoc=(ref,data,options)=>ref.set(data,options||{});
+const serverTimestamp=()=>window.firebase.firestore.FieldValue.serverTimestamp();
+const storageRef=(st,path)=>st.ref(path);
+const uploadBytes=(ref,file,metadata)=>ref.put(file,metadata);
+const getDownloadURL=ref=>ref.getDownloadURL();
+const deleteObject=ref=>ref.delete();
 
 const DAY = 86400000;
 const today = new Date();
@@ -520,7 +548,12 @@ renderAll();
   const loginScreen=$("#loginScreen"),appShell=$("#appShell"),loginForm=$("#loginForm"),signupForm=$("#signupForm");
   const authSuccess=$("#authSuccess"),firebaseSetupMessage=$("#firebaseSetupMessage");
   let currentUserProfile=null,pendingDeleteAction=null,pendingAvatarFile=null,removeAvatarRequested=false,signupInProgress=false;
-  if(!firebaseConfigured) firebaseSetupMessage.hidden=false;
+  if(!firebaseConfigured || !firebaseSdkReady){
+    firebaseSetupMessage.hidden=false;
+    firebaseSetupMessage.innerHTML = !firebaseConfigured
+      ? "Firebase config is missing. Check <b>firebase-config.js</b>."
+      : `Firebase SDK did not load${window.__firebaseSdkLoadError ? ` (${window.__firebaseSdkLoadError})` : ""}. Hard-refresh the page. If this remains, your network/browser is blocking gstatic.com.`;
+  }
 
   const initials=name=>{const p=String(name||"Pantry User").trim().split(/\s+/).filter(Boolean);return((p[0]?.[0]||"P")+(p.length>1?(p[p.length-1]?.[0]||""):"")).toUpperCase();};
   function setAvatar(el,name,url){if(!el)return;if(url){el.textContent="";el.style.backgroundImage=`url("${String(url).replace(/"/g,"%22")}")`;el.classList.add("has-photo");}else{el.style.backgroundImage="";el.classList.remove("has-photo");el.textContent=initials(name);}}
@@ -540,6 +573,7 @@ renderAll();
       "permission-denied":"Firestore blocked this request. Create Firestore and publish the included firestore.rules.",
       "failed-precondition":"Cloud Firestore is not ready. Create the Firestore database in Firebase Console, then publish the included rules.",
       "storage/unauthorized":"Profile photo upload is blocked by Firebase Storage rules.",
+      "storage/unavailable":"Firebase Storage did not load. You can still use authentication and Firestore; retry profile photo upload after reloading.",
       "storage/quota-exceeded":"Firebase Storage is unavailable. Check the Storage billing/bucket setup."
     };
     return m[err?.code]||String(err?.message||"Something went wrong. Please try again.").replace(/^Firebase:\s*/,"");
@@ -551,17 +585,17 @@ renderAll();
   function showApp(){loginScreen.hidden=true;appShell.hidden=false;document.body.classList.remove("login-active");updateUserUI();renderNotifications();}
   function setAuthMode(mode,msg=""){const su=mode==="signup";loginForm.hidden=su;signupForm.hidden=!su;$("#authKicker").textContent=su?"NEW ACCOUNT":"WELCOME BACK";$("#authTitle").textContent=su?"Create your PantryLoop account":"Sign in to PantryLoop";$("#authSubtitle").textContent=su?"Create a private account so your pantry, shopping, waste and profile data stay connected to you.":"Access your private pantry workspace and continue from where you left off.";authSuccess.hidden=!msg;authSuccess.textContent=msg;$("#loginError").hidden=true;$("#signupError").hidden=true;setTimeout(()=>$(su?"#signupName":"#loginEmail")?.focus(),0);}
   $("#showSignupBtn").onclick=()=>setAuthMode("signup");$("#showSigninBtn").onclick=()=>setAuthMode("signin");
-  window.__pantryAuthReady=true;
+  window.__pantryAuthReady=true; window.__pantryloopAppReady=true;
   function bindToggle(btn,input){$(btn).onclick=()=>{const i=$(input),show=i.type==="text";i.type=show?"password":"text";$(btn).textContent=show?"Show":"Hide";};}
   bindToggle("#togglePassword","#loginPassword");bindToggle("#toggleSignupPassword","#signupPassword");bindToggle("#toggleSignupConfirmPassword","#signupConfirmPassword");
 
-  loginForm.addEventListener("submit",async e=>{e.preventDefault();const email=$("#loginEmail").value.trim(),password=$("#loginPassword").value,error=$("#loginError"),submit=$("#loginSubmit");error.hidden=true;authSuccess.hidden=true;if(!firebaseConfigured){error.textContent="Firebase is not configured. Add your project values in firebase-config.js first.";error.hidden=false;return;}if(!/^\S+@\S+\.\S+$/.test(email)){error.textContent="Enter a valid email address.";error.hidden=false;return;}if(password.length<6){error.textContent="Password must contain at least 6 characters.";error.hidden=false;return;}submit.disabled=true;submit.textContent="Signing in…";try{await setPersistence(auth,$("#rememberMe").checked?browserLocalPersistence:browserSessionPersistence);await signInWithEmailAndPassword(auth,email,password);}catch(err){error.textContent=authErrorMessage(err);error.hidden=false;}finally{submit.disabled=false;submit.textContent="Sign in";}});
+  loginForm.addEventListener("submit",async e=>{e.preventDefault();const email=$("#loginEmail").value.trim(),password=$("#loginPassword").value,error=$("#loginError"),submit=$("#loginSubmit");error.hidden=true;authSuccess.hidden=true;if(!firebaseConfigured || !firebaseSdkReady || !auth){error.textContent=!firebaseConfigured?"Firebase is not configured. Check firebase-config.js.":"Firebase SDK did not load. Hard-refresh the page or allow gstatic.com in your browser/network.";error.hidden=false;return;}if(!/^\S+@\S+\.\S+$/.test(email)){error.textContent="Enter a valid email address.";error.hidden=false;return;}if(password.length<6){error.textContent="Password must contain at least 6 characters.";error.hidden=false;return;}submit.disabled=true;submit.textContent="Signing in…";try{await setPersistence(auth,$("#rememberMe").checked?browserLocalPersistence:browserSessionPersistence);await signInWithEmailAndPassword(auth,email,password);}catch(err){error.textContent=authErrorMessage(err);error.hidden=false;}finally{submit.disabled=false;submit.textContent="Sign in";}});
 
   signupForm.addEventListener("submit",async e=>{
     e.preventDefault();
     const name=$("#signupName").value.trim(),email=$("#signupEmail").value.trim(),password=$("#signupPassword").value,confirm=$("#signupConfirmPassword").value,error=$("#signupError"),submit=$("#signupSubmit");
     error.hidden=true;authSuccess.hidden=true;
-    if(!firebaseConfigured){error.textContent="Firebase is not configured. Add your project values in firebase-config.js first.";error.hidden=false;return;}
+    if(!firebaseConfigured || !firebaseSdkReady || !auth){error.textContent=!firebaseConfigured?"Firebase is not configured. Check firebase-config.js.":"Firebase SDK did not load. Hard-refresh the page or allow gstatic.com in your browser/network.";error.hidden=false;return;}
     if(name.length<2){error.textContent="Enter your full name.";error.hidden=false;return;}
     if(!/^\S+@\S+\.\S+$/.test(email)){error.textContent="Enter a valid email address.";error.hidden=false;return;}
     if(password.length<6){error.textContent="Password must contain at least 6 characters.";error.hidden=false;return;}
@@ -591,11 +625,11 @@ renderAll();
     }finally{signupInProgress=false;submit.disabled=false;submit.textContent="Create account";}
   });
 
-  $("#forgotPasswordBtn").onclick=async()=>{const email=$("#loginEmail").value.trim(),error=$("#loginError");error.hidden=true;authSuccess.hidden=true;if(!firebaseConfigured){error.textContent="Firebase is not configured yet.";error.hidden=false;return;}if(!/^\S+@\S+\.\S+$/.test(email)){error.textContent="Enter your email first, then choose Forgot password.";error.hidden=false;return;}try{await sendPasswordResetEmail(auth,email);authSuccess.textContent="Password reset email sent. Check your inbox.";authSuccess.hidden=false;}catch(err){error.textContent=authErrorMessage(err);error.hidden=false;}};
+  $("#forgotPasswordBtn").onclick=async()=>{const email=$("#loginEmail").value.trim(),error=$("#loginError");error.hidden=true;authSuccess.hidden=true;if(!firebaseConfigured || !firebaseSdkReady || !auth){error.textContent=!firebaseConfigured?"Firebase is not configured yet.":"Firebase SDK did not load. Hard-refresh the page or allow gstatic.com.";error.hidden=false;return;}if(!/^\S+@\S+\.\S+$/.test(email)){error.textContent="Enter your email first, then choose Forgot password.";error.hidden=false;return;}try{await sendPasswordResetEmail(auth,email);authSuccess.textContent="Password reset email sent. Check your inbox.";authSuccess.hidden=false;}catch(err){error.textContent=authErrorMessage(err);error.hidden=false;}};
 
   async function loadProfile(u){let p={name:u.displayName||"Pantry User",email:u.email||"",photoURL:u.photoURL||""};try{const s=await getDoc(doc(db,"users",u.uid));if(s.exists())p={...p,...s.data()};else await setDoc(doc(db,"users",u.uid),{...p,createdAt:serverTimestamp(),updatedAt:serverTimestamp()},{merge:true});}catch(err){console.error("Profile load failed:",err);}currentUserProfile=p;return p;}
   async function handleSignedInUser(u){await loadProfile(u);await loadUserState(u.uid);showApp();go("dashboard");}
-  if(firebaseConfigured){
+  if(firebaseConfigured && firebaseSdkReady && auth){
     onAuthStateChanged(auth,async u=>{
       if(signupInProgress)return;
       if(u){
@@ -625,7 +659,7 @@ renderAll();
   $("#accountAvatarInput").addEventListener("change",e=>{const f=e.target.files?.[0]||null;if(!f)return;if(!/^image\/(jpeg|png|webp)$/.test(f.type)){toast("Choose a JPG, PNG, or WebP image");e.target.value="";return;}if(f.size>2*1024*1024){toast("Profile photo must be 2 MB or smaller");e.target.value="";return;}pendingAvatarFile=f;removeAvatarRequested=false;refreshAccountPreview();});
   $("#removeAccountAvatar").onclick=()=>{pendingAvatarFile=null;removeAvatarRequested=true;$("#accountAvatarInput").value="";refreshAccountPreview();};
   const closeAccount=()=>{pendingAvatarFile=null;removeAvatarRequested=false;$("#accountAvatarInput").value="";$("#accountModalBackdrop").hidden=true;};$("#accountModalClose").onclick=$("#cancelAccountModal").onclick=closeAccount;
-  $("#accountForm").onsubmit=async e=>{e.preventDefault();const u=auth?.currentUser;if(!u)return;const name=$("#accountName").value.trim(),email=$("#accountEmail").value.trim(),submit=e.submitter;if(!name||!/^\S+@\S+\.\S+$/.test(email)){toast("Enter a valid name and email");return;}if(submit){submit.disabled=true;submit.textContent="Saving…";}try{let photo=currentUserProfile?.photoURL||u.photoURL||"";const ar=storageRef(storage,`users/${u.uid}/profile/avatar`);if(removeAvatarRequested){try{await deleteObject(ar);}catch(err){if(err?.code!=="storage/object-not-found")throw err;}photo="";}else if(pendingAvatarFile){await uploadBytes(ar,pendingAvatarFile,{contentType:pendingAvatarFile.type});photo=await getDownloadURL(ar);}if(u.displayName!==name||(u.photoURL||"")!==photo)await updateProfile(u,{displayName:name,photoURL:photo||null});if(u.email!==email)await updateEmail(u,email);currentUserProfile={name,email:u.email||email,photoURL:photo};await setDoc(doc(db,"users",u.uid),{...currentUserProfile,updatedAt:serverTimestamp()},{merge:true});updateUserUI();closeAccount();toast("Account settings saved");}catch(err){console.error(err);toast(authErrorMessage(err));}finally{if(submit){submit.disabled=false;submit.textContent="Save changes";}}};
+  $("#accountForm").onsubmit=async e=>{e.preventDefault();const u=auth?.currentUser;if(!u)return;const name=$("#accountName").value.trim(),email=$("#accountEmail").value.trim(),submit=e.submitter;if(!name||!/^\S+@\S+\.\S+$/.test(email)){toast("Enter a valid name and email");return;}if(submit){submit.disabled=true;submit.textContent="Saving…";}try{let photo=currentUserProfile?.photoURL||u.photoURL||"";if((removeAvatarRequested||pendingAvatarFile)&&!storage){throw Object.assign(new Error("Firebase Storage SDK is unavailable. Profile text changes can still be saved after Storage is enabled/loaded."),{code:"storage/unavailable"});}const ar=storage?storageRef(storage,`users/${u.uid}/profile/avatar`):null;if(removeAvatarRequested){try{await deleteObject(ar);}catch(err){if(err?.code!=="storage/object-not-found")throw err;}photo="";}else if(pendingAvatarFile){await uploadBytes(ar,pendingAvatarFile,{contentType:pendingAvatarFile.type});photo=await getDownloadURL(ar);}if(u.displayName!==name||(u.photoURL||"")!==photo)await updateProfile(u,{displayName:name,photoURL:photo||null});if(u.email!==email)await updateEmail(u,email);currentUserProfile={name,email:u.email||email,photoURL:photo};await setDoc(doc(db,"users",u.uid),{...currentUserProfile,updatedAt:serverTimestamp()},{merge:true});updateUserUI();closeAccount();toast("Account settings saved");}catch(err){console.error(err);toast(authErrorMessage(err));}finally{if(submit){submit.disabled=false;submit.textContent="Save changes";}}};
   $("#logoutBtn").onclick=async()=>{profileMenu.hidden=true;try{await writeStateToFirestore();await signOut(auth);}catch(err){toast(authErrorMessage(err));}};
 
   const menuBtn=$("#mobileMenu"),sidebar=$("#sidebar");
