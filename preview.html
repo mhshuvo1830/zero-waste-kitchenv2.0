@@ -8,29 +8,38 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&family=Libre+Baskerville:wght@400;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=4.7" />
-</head>
+  <link rel="stylesheet" href="styles.css?v=4.6" />
+<style>#loginScreen{display:none!important}</style></head>
 <body>
   <section class="login-screen" id="loginScreen" aria-label="PantryLoop sign in">
-    <div class="login-shell organic-auth-shell">
-      <div class="login-panel organic-form-panel">
+    <div class="login-shell">
+      <div class="login-visual">
+        <div class="login-brand">
+          <div class="brand-mark large" aria-hidden="true">
+            <svg viewBox="0 0 48 48"><path d="M24 5c7 7 15 10 15 21 0 9-6 16-15 17-9-1-15-8-15-17C9 15 17 12 24 5Z"/><path class="cut" d="M24 12v25M17 24c3 1 5 3 7 6M31 20c-4 2-6 4-7 7"/></svg>
+          </div>
+          <div><strong>PantryLoop</strong><span>Use more. Waste less.</span></div>
+        </div>
+        <div class="login-visual-copy">
+          <span class="login-kicker">SMART KITCHEN • ZERO WASTE</span>
+          <h1>Turn what you have into what you need.</h1>
+          <p>Track your pantry, rescue food before it expires, and make smarter shopping decisions from one calm workspace.</p>
+          <div class="login-feature-row">
+            <span>✓ Freshness tracking</span><span>✓ Rescue recipes</span><span>✓ Waste insights</span>
+          </div>
+        </div>
+      </div>
+      <div class="login-panel">
         <div class="login-card">
-          <div class="auth-panel-brand" aria-label="PantryLoop">
-            <div class="brand-mark auth-brand-mark" aria-hidden="true">
-              <svg viewBox="0 0 48 48"><path d="M24 5c7 7 15 10 15 21 0 9-6 16-15 17-9-1-15-8-15-17C9 15 17 12 24 5Z"/><path class="cut" d="M24 12v25M17 24c3 1 5 3 7 6M31 20c-4 2-6 4-7 7"/></svg>
-            </div>
-            <div><strong>PantryLoop</strong><span>Use more. Waste less.</span></div>
-          </div>
-
           <div class="auth-mode-head">
-            <span class="tiny-label" id="authKicker">WELCOME BACK</span>
-            <h2 id="authTitle">Sign in to PantryLoop</h2>
-            <p class="login-subtitle" id="authSubtitle">Access your private pantry workspace and continue from where you left off.</p>
+            <div>
+              <span class="tiny-label" id="authKicker">WELCOME BACK</span>
+              <h2 id="authTitle">Sign in to PantryLoop</h2>
+              <p class="login-subtitle" id="authSubtitle">Access your private pantry workspace and continue from where you left off.</p>
+            </div>
           </div>
-
           <div class="auth-setup-message" id="firebaseSetupMessage" hidden>Firebase is not configured yet. Add your Firebase Web App values in <b>firebase-config.js</b> before signing in.</div>
           <p class="auth-success" id="authSuccess" role="status" hidden></p>
-
           <form id="loginForm" class="auth-form" novalidate>
             <label class="login-field">Email<input id="loginEmail" type="email" autocomplete="email" placeholder="you@example.com" required /></label>
             <label class="login-field">Password<span class="password-field"><input id="loginPassword" type="password" autocomplete="current-password" placeholder="Enter password" minlength="6" required /><button type="button" id="togglePassword" aria-label="Show password">Show</button></span></label>
@@ -39,7 +48,6 @@
             <button class="primary-btn login-submit" id="loginSubmit" type="submit">Sign in</button>
             <p class="auth-switch">Don't have an account? <button type="button" class="link-button strong-link" id="showSignupBtn">Create account</button></p>
           </form>
-
           <form id="signupForm" class="auth-form" novalidate hidden>
             <label class="login-field">Full name<input id="signupName" type="text" autocomplete="name" placeholder="Your full name" minlength="2" required /></label>
             <label class="login-field">Email<input id="signupEmail" type="email" autocomplete="email" placeholder="you@example.com" required /></label>
@@ -51,28 +59,10 @@
           </form>
         </div>
       </div>
-
-      <div class="login-visual organic-welcome-panel" aria-label="PantryLoop welcome message">
-        <div class="organic-gradient-orb organic-gradient-orb-one" aria-hidden="true"></div>
-        <div class="organic-gradient-orb organic-gradient-orb-two" aria-hidden="true"></div>
-        <div class="welcome-blob">
-          <div class="welcome-copy">
-            <span class="welcome-kicker">SMART KITCHEN • ZERO WASTE</span>
-            <h1 id="welcomeTitle">Welcome Back!</h1>
-            <h2>Turn what you have into what you need.</h2>
-            <p>Track your pantry, rescue food before it expires, and make smarter shopping decisions from one calm workspace.</p>
-            <div class="welcome-feature-row">
-              <span>Freshness tracking</span>
-              <span>Rescue recipes</span>
-              <span>Waste insights</span>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   </section>
 
-  <div class="app-shell" id="appShell" hidden>
+  <div class="app-shell" id="appShell">
     <aside class="sidebar" id="sidebar">
       <div class="brand">
         <div class="brand-mark" aria-hidden="true">
@@ -488,53 +478,6 @@ Eggs 12"></textarea>
   </div>
 
   <div class="toast" id="toast"></div>
-  <script>
-    // Auth UI bootstrap: keeps Sign in/Create account switching responsive even
-    // while Firebase modules are still loading or if a CDN request is delayed.
-    (() => {
-      const loginForm = document.getElementById("loginForm");
-      const signupForm = document.getElementById("signupForm");
-      const authKicker = document.getElementById("authKicker");
-      const authTitle = document.getElementById("authTitle");
-      const authSubtitle = document.getElementById("authSubtitle");
-      const showSignupBtn = document.getElementById("showSignupBtn");
-      const showSigninBtn = document.getElementById("showSigninBtn");
-      const setupMessage = document.getElementById("firebaseSetupMessage");
-      const welcomeTitle = document.getElementById("welcomeTitle");
 
-      function switchMode(mode) {
-        const signup = mode === "signup";
-        if (loginForm) loginForm.hidden = signup;
-        if (signupForm) signupForm.hidden = !signup;
-        if (authKicker) authKicker.textContent = signup ? "NEW ACCOUNT" : "WELCOME BACK";
-        if (authTitle) authTitle.textContent = signup ? "Create your PantryLoop account" : "Sign in to PantryLoop";
-        if (authSubtitle) authSubtitle.textContent = signup
-          ? "Create a private account so your pantry, shopping, waste and profile data stay connected to you."
-          : "Access your private pantry workspace and continue from where you left off.";
-        if (welcomeTitle) welcomeTitle.textContent = signup ? "Welcome to PantryLoop!" : "Welcome Back!";
-      }
-
-      showSignupBtn?.addEventListener("click", () => switchMode("signup"));
-      showSigninBtn?.addEventListener("click", () => switchMode("signin"));
-
-      // If the Firebase/module script never becomes ready, show an actionable error
-      // instead of leaving buttons apparently dead.
-      window.setTimeout(() => {
-        if (!window.__pantryAuthReady && setupMessage) {
-          setupMessage.hidden = false;
-          const blocked = window.__firebaseSdkLoadError ? ` Blocked/failed file: <b>${window.__firebaseSdkLoadError}</b>.` : "";
-          const appState = window.__pantryloopScriptStarted ? "app.js started but stopped before auth initialization." : "app.js did not start.";
-          setupMessage.innerHTML = `PantryLoop did not finish loading. ${appState}${blocked} Hard-refresh (Ctrl+Shift+R).`;
-        }
-      }, 8000);
-    })();
-  </script>
-  <!-- Firebase compat scripts: classic deferred scripts are more robust on static GitHub Pages than a remote ESM import graph. -->
-  <script defer src="https://www.gstatic.com/firebasejs/12.16.0/firebase-app-compat.js" onload="window.__firebaseAppCompatLoaded=true" onerror="window.__firebaseSdkLoadError='firebase-app-compat.js'"></script>
-  <script defer src="https://www.gstatic.com/firebasejs/12.16.0/firebase-auth-compat.js" onload="window.__firebaseAuthCompatLoaded=true" onerror="window.__firebaseSdkLoadError='firebase-auth-compat.js'"></script>
-  <script defer src="https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore-compat.js" onload="window.__firebaseFirestoreCompatLoaded=true" onerror="window.__firebaseSdkLoadError='firebase-firestore-compat.js'"></script>
-  <script defer src="https://www.gstatic.com/firebasejs/12.16.0/firebase-storage-compat.js" onload="window.__firebaseStorageCompatLoaded=true" onerror="window.__firebaseSdkLoadError='firebase-storage-compat.js'"></script>
-  <script defer src="./firebase-config.js?v=4.7"></script>
-  <script defer src="./app.js?v=4.7"></script>
 </body>
 </html>

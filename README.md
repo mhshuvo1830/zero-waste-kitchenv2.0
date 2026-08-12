@@ -1,4 +1,4 @@
-# PantryLoop — Firebase V4.5 (Firestore Snapshot Fix)
+# PantryLoop — Firebase V4.6 (Firestore Snapshot Fix)
 
 This version keeps the Firebase Auth + per-user Firestore design and changes Firebase loading to classic deferred compat scripts for better reliability on static GitHub Pages.
 
@@ -47,5 +47,12 @@ See `DEPLOY_GITHUB_MHSHUVO1830.md` for the exact deployment and Firebase Authori
 - If the Firebase module fails to load, the login page displays a diagnostic message after 8 seconds instead of silently doing nothing.
 
 
-## V4.5 fix
+## V4.6 fix
 Firebase compat `DocumentSnapshot.exists` is a boolean property, not a function. This build fixes both cloud-state and user-profile reads (`snapshot.exists` instead of `snapshot.exists()`).
+
+
+## V4.6 visual redesign
+See `V4_6_REFERENCE_REDESIGN.md`. This version preserves the working Firebase V4.5 baseline while updating all module visuals to match the supplied reference screenshots.
+
+## V4.7 Organic Auth redesign
+See `V4_7_ORGANIC_AUTH_REDESIGN.md`. The working Firebase/Firestore flow is unchanged; only Login/Create Account visuals were redesigned.

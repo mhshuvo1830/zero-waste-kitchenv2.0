@@ -583,7 +583,7 @@ renderAll();
   function updateUserUI(){const u=auth?.currentUser;if(!u)return;const name=currentUserProfile?.name||u.displayName||"Pantry User",email=currentUserProfile?.email||u.email||"",photo=currentUserProfile?.photoURL||u.photoURL||"";$("#profileName").textContent=name;$("#profileEmail").textContent=email;$("#profileMenuName").textContent=name;$("#profileMenuEmail").textContent=email;setAvatar($("#profileAvatar"),name,photo);updatePageTitle();}
   function showLogin(){loginScreen.hidden=false;appShell.hidden=true;document.body.classList.add("login-active");$("#profileMenu").hidden=true;$("#notificationPanel").hidden=true;setTimeout(()=>$("#loginEmail")?.focus(),0);}
   function showApp(){loginScreen.hidden=true;appShell.hidden=false;document.body.classList.remove("login-active");updateUserUI();renderNotifications();}
-  function setAuthMode(mode,msg=""){const su=mode==="signup";loginForm.hidden=su;signupForm.hidden=!su;$("#authKicker").textContent=su?"NEW ACCOUNT":"WELCOME BACK";$("#authTitle").textContent=su?"Create your PantryLoop account":"Sign in to PantryLoop";$("#authSubtitle").textContent=su?"Create a private account so your pantry, shopping, waste and profile data stay connected to you.":"Access your private pantry workspace and continue from where you left off.";authSuccess.hidden=!msg;authSuccess.textContent=msg;$("#loginError").hidden=true;$("#signupError").hidden=true;setTimeout(()=>$(su?"#signupName":"#loginEmail")?.focus(),0);}
+  function setAuthMode(mode,msg=""){const su=mode==="signup";loginForm.hidden=su;signupForm.hidden=!su;$("#authKicker").textContent=su?"NEW ACCOUNT":"WELCOME BACK";$("#authTitle").textContent=su?"Create your PantryLoop account":"Sign in to PantryLoop";$("#authSubtitle").textContent=su?"Create a private account so your pantry, shopping, waste and profile data stay connected to you.":"Access your private pantry workspace and continue from where you left off.";if($("#welcomeTitle"))$("#welcomeTitle").textContent=su?"Welcome to PantryLoop!":"Welcome Back!";authSuccess.hidden=!msg;authSuccess.textContent=msg;$("#loginError").hidden=true;$("#signupError").hidden=true;setTimeout(()=>$(su?"#signupName":"#loginEmail")?.focus(),0);}
   $("#showSignupBtn").onclick=()=>setAuthMode("signup");$("#showSigninBtn").onclick=()=>setAuthMode("signin");
   window.__pantryAuthReady=true; window.__pantryloopAppReady=true;
   function bindToggle(btn,input){$(btn).onclick=()=>{const i=$(input),show=i.type==="text";i.type=show?"password":"text";$(btn).textContent=show?"Show":"Hide";};}
@@ -678,4 +678,40 @@ renderAll();
   const legacyRenderInventory=renderInventory;renderInventory=function(){legacyRenderInventory();enhanceDeleteButtons();};const legacyRenderShopping=renderShopping;renderShopping=function(){legacyRenderShopping();enhanceDeleteButtons();};const legacyRenderAll=renderAll;renderAll=function(){legacyRenderAll();enhanceDeleteButtons();renderNotifications();updatePageTitle();};
   document.addEventListener("click",e=>{if(!e.target.closest(".notification-area")){notificationPanel.hidden=true;notificationBtn.setAttribute("aria-expanded","false");}if(!e.target.closest(".profile-area")){profileMenu.hidden=true;profileButton.setAttribute("aria-expanded","false");}});document.addEventListener("keydown",e=>{if(e.key!=="Escape")return;notificationPanel.hidden=true;profileMenu.hidden=true;notificationBtn.setAttribute("aria-expanded","false");profileButton.setAttribute("aria-expanded","false");if(!$("#deleteModalBackdrop").hidden)closeDelete();if(!$("#accountModalBackdrop").hidden)closeAccount();});$("#accountModalBackdrop").addEventListener("click",e=>{if(e.target.id==="accountModalBackdrop")closeAccount();});
   renderAll();
+})();
+
+// ===== V4.6 REFERENCE DESIGN ENHANCEMENTS =====
+// Presentation-only enhancements. Cloud/auth state and data contracts are unchanged.
+(() => {
+  const safeText = value => String(value ?? "").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","\'":"&#039;"}[ch]));
+  const legacyWasteForV46 = renderWaste;
+  renderWaste = function(){
+    legacyWasteForV46();
+    const reasons = {};
+    waste.forEach(w => reasons[w.reason] = (reasons[w.reason] || 0) + Number(w.amount || 0));
+    const entries = Object.entries(reasons).sort((a,b)=>b[1]-a[1]);
+    const max = Math.max(...entries.map(([,v])=>v), 1);
+    const box = $("#wasteReasonBars");
+    if(box){
+      box.classList.add("waste-bars-chart");
+      box.innerHTML = entries.length ? entries.slice(0,6).map(([label,value]) => `
+        <div class="waste-bar-col" title="${safeText(label)}: ${Number(value).toFixed(2)} kg">
+          <b>${Number(value).toFixed(1)}</b>
+          <div class="waste-bar-track"><span class="waste-bar-fill" style="height:${Math.max(4,(value/max)*100)}%"></span></div>
+          <small>${safeText(label)}</small>
+        </div>`).join("") : `<div class="notification-empty"><strong>No waste causes yet</strong><span>Log waste to build this chart.</span></div>`;
+    }
+  };
+
+  const legacyRenderDashboardV46 = renderDashboard;
+  renderDashboard = function(){
+    legacyRenderDashboardV46();
+    const amount = waste.reduce((n,w)=>n+Number(w.amount||0),0);
+    const saved = Math.max(0, 12.8 - amount * .15);
+    const sidebar = $("#sidebarSaved");
+    if(sidebar) sidebar.textContent = `${saved.toFixed(1)} kg`;
+  };
+
+  // Repaint current view once after the visual overrides are installed.
+  try { renderAll(); } catch (err) { console.warn("V4.6 visual refresh deferred", err); }
 })();
